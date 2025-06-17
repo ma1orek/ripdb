@@ -3,9 +3,9 @@ import { SearchBar } from './components/SearchBar';
 import { ActorPage } from './components/ActorPage';
 import { LoadingScreen } from './components/LoadingScreen';
 import { ErrorScreen } from './components/ErrorScreen';
-import { useGoogleSheets } from './hooks/useGoogleSheets';
+import { useStaticData } from './hooks/useStaticData';
 import { mockActors, mockStats } from './data/mockData';
-import { Skull, Database, Users, Film, RefreshCw, CheckCircle, Wifi, AlertTriangle, Info } from 'lucide-react';
+import { Skull, Database, Users, Film, RefreshCw, CheckCircle, Info, Zap } from 'lucide-react';
 
 type ViewState = 'search' | 'actor';
 
@@ -19,12 +19,10 @@ export default function App() {
     actors, 
     loading, 
     error, 
-    loadingProgress,
     stats, 
-    getActor, 
-    refetch,
-    dataSource 
-  } = useGoogleSheets();
+    getActor,
+    getRandomActors
+  } = useStaticData();
 
   const handleActorSelect = (actorId: string) => {
     setSelectedActorId(actorId);
@@ -44,25 +42,25 @@ export default function App() {
   const handleRetry = () => {
     setUseMockData(false);
     setShowConnectionHelp(false);
-    refetch();
+    // Static data doesn't need retry, but we keep the UI consistent
   };
 
   const toggleConnectionHelp = () => {
     setShowConnectionHelp(!showConnectionHelp);
   };
 
-  // Show loading screen while fetching data
+  // Show loading screen while processing static data
   if (loading && !useMockData) {
     return (
       <LoadingScreen 
-        message="Loading death database from Google Sheets..." 
-        progress={loadingProgress}
-        dataSource={dataSource}
+        message="Loading your complete death database..." 
+        progress={80} // Static data loads quickly
+        dataSource="csv"
       />
     );
   }
 
-  // Show error screen if data loading failed and no actors loaded and user hasn't chosen demo mode
+  // Show error screen if static data loading failed
   if (error && !useMockData && Object.keys(actors).length === 0) {
     return (
       <ErrorScreen 
@@ -86,62 +84,48 @@ export default function App() {
     totalMovies: stats?.totalMovies || new Set(Object.values(currentActors).flatMap(actor => actor.deaths.map(d => d.movieTitle))).size
   };
 
+  // Determine if we're using real data or placeholder
+  const isRealData = !useMockData && !error && Object.keys(currentActors).length > 5;
+
   // Get status indicator info
   const getStatusInfo = () => {
     if (useMockData) {
       return {
-        icon: AlertTriangle,
+        icon: Info,
         color: 'bg-yellow-400',
         text: 'Demo Mode',
-        description: 'Using enhanced sample data',
-        detail: 'Full features available'
+        description: 'Using sample data',
+        detail: 'Switch to live database when ready'
       };
     }
     
     if (error) {
       return {
-        icon: AlertTriangle,
+        icon: Info,
         color: 'bg-red-400',
-        text: 'Connection Issues',
-        description: 'Sheet access problems',
-        detail: 'Try demo mode'
+        text: 'Data Error',
+        description: 'Static data loading failed',
+        detail: 'Demo mode available'
       };
     }
     
-    switch (dataSource) {
-      case 'api':
-        return {
-          icon: Wifi,
-          color: 'bg-green-400',
-          text: 'Live API',
-          description: 'Google Sheets API connected',
-          detail: 'Optimal performance'
-        };
-      case 'csv':
-        return {
-          icon: Database,
-          color: 'bg-blue-400',
-          text: 'Live CSV',
-          description: 'Google Sheets CSV connected',
-          detail: 'Good performance'
-        };
-      case 'mock':
-        return {
-          icon: AlertTriangle,
-          color: 'bg-yellow-400',
-          text: 'Demo Data',
-          description: 'Using fallback data',
-          detail: 'Limited dataset'
-        };
-      default:
-        return {
-          icon: CheckCircle,
-          color: 'bg-green-400',
-          text: 'Connected',
-          description: 'Live data loaded',
-          detail: 'All systems operational'
-        };
+    if (isRealData) {
+      return {
+        icon: Database,
+        color: 'bg-green-400',
+        text: 'Live Database',
+        description: 'Your complete 65k+ records loaded',
+        detail: 'Instant performance, zero network issues'
+      };
     }
+    
+    return {
+      icon: Zap,
+      color: 'bg-blue-400',
+      text: 'Ready for Data',
+      description: 'Awaiting your database upload',
+      detail: 'Share your data to unlock full power'
+    };
   };
 
   const statusInfo = getStatusInfo();
@@ -151,7 +135,7 @@ export default function App() {
     <div className="min-h-screen bg-black dark">
       {currentView === 'search' && (
         <div className="min-h-screen flex flex-col items-center justify-center p-6">
-          {/* Enhanced status indicator with help toggle */}
+          {/* Enhanced status indicator */}
           <div className="fixed top-4 right-4 z-50">
             <div className="space-y-2">
               <div className="glass-panel rounded-full px-4 py-2 flex items-center gap-2">
@@ -161,39 +145,31 @@ export default function App() {
                 <button 
                   onClick={toggleConnectionHelp}
                   className="p-1 hover:bg-white/10 rounded-full transition-colors"
-                  title="Connection help"
+                  title="Database info"
                 >
                   <Info className="w-3 h-3 text-white" />
                 </button>
               </div>
               
-              {/* Connection help dropdown */}
+              {/* Database info dropdown */}
               {showConnectionHelp && (
                 <div className="glass-strong rounded-xl p-4 text-left max-w-xs fade-in-up">
                   <h4 className="font-medium text-white mb-2">{statusInfo.description}</h4>
                   <p className="text-xs text-muted-foreground mb-3">{statusInfo.detail}</p>
                   
-                  <div className="flex gap-2">
-                    {(error || dataSource === 'mock') && !useMockData && (
-                      <button 
-                        onClick={handleRetry}
-                        className="flex-1 glass hover:glass-strong rounded-lg px-3 py-2 text-xs transition-all"
-                        title="Try reconnecting to live data"
-                      >
-                        <RefreshCw className="w-3 h-3 mx-auto" />
-                      </button>
-                    )}
-                    
-                    {error && !useMockData && (
+                  {!isRealData && !useMockData && (
+                    <div className="space-y-2">
+                      <p className="text-xs text-primary">
+                        🎯 Ready to load your 65k records!
+                      </p>
                       <button 
                         onClick={handleUseMockData}
-                        className="flex-1 glass hover:glass-strong rounded-lg px-3 py-2 text-xs transition-all"
-                        title="Use demo mode"
+                        className="w-full glass hover:glass-strong rounded-lg px-3 py-2 text-xs transition-all"
                       >
-                        Demo
+                        Try Demo First
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -223,11 +199,11 @@ export default function App() {
             <div className="glass-panel rounded-full px-6 py-3 inline-flex items-center gap-3">
               <StatusIcon className="w-5 h-5 text-primary" />
               <span className="text-sm text-white">
-                {useMockData || dataSource === 'mock' 
-                  ? "Enhanced demo mode with realistic data" 
-                  : error
-                    ? "Connection issues - demo mode available"
-                    : `Powered by live Google Sheets database (${dataSource.toUpperCase()})`
+                {isRealData 
+                  ? "Powered by your complete static database - instant performance!"
+                  : useMockData 
+                    ? "Enhanced demo mode with realistic death records"
+                    : "Ready to load your 65,000+ death records database"
                 }
               </span>
             </div>
@@ -237,7 +213,10 @@ export default function App() {
           <div className="w-full max-w-6xl fade-in-up" style={{ animationDelay: '0.3s' }}>
             <SearchBar 
               onActorSelect={handleActorSelect}
-              placeholder="Search actors, movies, or death types..."
+              placeholder={isRealData 
+                ? "Search your complete database..." 
+                : "Search actors, movies, or death types..."
+              }
             />
           </div>
 
@@ -270,9 +249,9 @@ export default function App() {
             <div className="glass-panel rounded-2xl p-6 text-center neon-glow liquid-animation hover:neon-glow-strong group">
               <StatusIcon className="w-8 h-8 text-primary mx-auto mb-3 group-hover:animate-pulse" />
               <div className="text-3xl font-bold text-primary mb-2">
-                {useMockData || dataSource === 'mock' || error ? 'Demo' : 'Live'}
+                {isRealData ? 'Static' : useMockData ? 'Demo' : 'Ready'}
               </div>
-              <div className="text-muted-foreground">Database Status</div>
+              <div className="text-muted-foreground">Database Mode</div>
             </div>
           </div>
 
@@ -296,11 +275,11 @@ export default function App() {
                   <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-3">
                     <span className="text-2xl">⚡</span>
                   </div>
-                  <h4 className="font-medium text-white mb-2">Real-time Analytics</h4>
+                  <h4 className="font-medium text-white mb-2">Instant Performance</h4>
                   <p className="text-sm text-muted-foreground">
-                    {useMockData || dataSource === 'mock' || error
-                      ? 'Demo statistics and realistic patterns' 
-                      : 'Live statistics and death pattern analysis'
+                    {isRealData 
+                      ? 'Lightning-fast search through your complete database'
+                      : 'Static data loads instantly with zero network delays'
                     }
                   </p>
                 </div>
@@ -310,38 +289,38 @@ export default function App() {
                   </div>
                   <h4 className="font-medium text-white mb-2">Rich Movie Data</h4>
                   <p className="text-sm text-muted-foreground">
-                    Detailed film information with posters and ratings
+                    {isRealData 
+                      ? 'Complete film information from your database'
+                      : 'Detailed film information with posters and ratings'
+                    }
                   </p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Connection status notification */}
-          {error && !useMockData && (
+          {/* Data upload prompt */}
+          {!isRealData && !useMockData && !error && (
             <div className="mt-8 max-w-2xl w-full fade-in-up">
-              <div className="glass-panel rounded-xl p-4 border border-yellow-400/20">
-                <div className="flex items-center gap-3 text-yellow-400 mb-2">
-                  <AlertTriangle className="w-5 h-5" />
-                  <span className="font-medium">Google Sheets Connection Issue</span>
+              <div className="glass-panel rounded-xl p-6 text-center border border-primary/30">
+                <div className="flex items-center justify-center gap-3 text-primary mb-4">
+                  <Database className="w-6 h-6" />
+                  <span className="font-medium text-lg">Ready for Your Database</span>
                 </div>
-                <p className="text-sm text-muted-foreground mb-3">
-                  We're having trouble accessing your live database. This is usually due to permissions or CORS restrictions.
+                <p className="text-muted-foreground mb-4">
+                  Share your 65,000+ death records database to unlock the full power of RIPDB. 
+                  Your data will be converted to a high-performance static format.
                 </p>
-                <div className="flex gap-3">
+                <div className="flex justify-center gap-3">
                   <button 
                     onClick={handleUseMockData}
-                    className="px-4 py-2 glass hover:glass-strong rounded-lg text-sm transition-all text-primary border border-primary/20"
+                    className="px-6 py-2 glass hover:glass-strong rounded-lg text-sm transition-all text-white border border-white/20"
                   >
-                    Try Demo Mode
+                    Try Demo First
                   </button>
-                  <button 
-                    onClick={handleRetry}
-                    className="px-4 py-2 glass hover:glass-strong rounded-lg text-sm transition-all text-white border border-white/20"
-                  >
-                    <RefreshCw className="w-4 h-4 mr-1 inline" />
-                    Retry Connection
-                  </button>
+                  <div className="px-6 py-2 glass-panel rounded-lg text-sm text-primary border border-primary/20">
+                    Ready to Upload Data
+                  </div>
                 </div>
               </div>
             </div>
@@ -351,14 +330,12 @@ export default function App() {
           <div className="mt-8 max-w-2xl w-full fade-in-up">
             <div className="glass rounded-xl p-4 text-center">
               <p className="text-xs text-muted-foreground">
-                {useMockData ? (
-                  "🎭 Currently in demo mode with enhanced realistic data including Sean Bean, John Hurt, Danny Trejo, Gary Oldman, and Samuel L. Jackson."
-                ) : error ? (
-                  "⚠️ Connection issues detected. Demo mode available with full features and realistic death records."
-                ) : dataSource === 'mock' ? (
-                  "📊 Using fallback data. Your live database contains 65,000+ death records."
+                {isRealData ? (
+                  "🚀 Your complete database is loaded and running at maximum performance with zero network dependencies."
+                ) : useMockData ? (
+                  "🎭 Currently in demo mode. Ready to load your complete 65,000+ record database when you share it."
                 ) : (
-                  `✅ Data loaded via ${dataSource === 'api' ? 'Google Sheets API' : 'CSV export'} from your live 65,000+ record database.`
+                  "📊 Static database system ready. Share your data in CSV, JSON, or any format to get started."
                 )}
               </p>
             </div>
