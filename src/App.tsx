@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { SearchBar } from './components/SearchBar';
-import { ActorPage } from './components/ActorPage';
-import { LoadingScreen } from './components/LoadingScreen';
-import { ErrorScreen } from './components/ErrorScreen';
-import { useGoogleSheets } from './hooks/useGoogleSheets';
-import { mockActors, mockStats } from './data/mockData';
+import { SearchBar } from 'components/SearchBar';
+import { ActorPage } from 'components/ActorPage';
+import { LoadingScreen } from 'components/LoadingScreen';
+import { ErrorScreen } from 'components/ErrorScreen';
+import { useGoogleSheets } from 'hooks/useGoogleSheets';
+import { mockActors, mockStats } from 'data/mockData';
 import { Skull, Database, Users, Film, RefreshCw, CheckCircle, Wifi, AlertTriangle, Info } from 'lucide-react';
 
 type ViewState = 'search' | 'actor';
