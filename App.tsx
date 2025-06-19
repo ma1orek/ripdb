@@ -3,11 +3,12 @@ import { SearchBar } from './components/SearchBar';
 import { ActorPage } from './components/ActorPage';
 import { LoadingScreen } from './components/LoadingScreen';
 import { ErrorScreen } from './components/ErrorScreen';
+import { FaceSwapStudio } from './components/FaceSwapStudio';
 import { useStaticData } from './hooks/useStaticData';
 import { mockActors, mockStats } from './data/mockData';
-import { Skull, Database, Users, Film, RefreshCw, CheckCircle, Info, Zap } from 'lucide-react';
+import { Skull, Database, Users, Film, RefreshCw, CheckCircle, Info, Zap, Wand2 } from 'lucide-react';
 
-type ViewState = 'search' | 'actor';
+type ViewState = 'search' | 'actor' | 'faceswap';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<ViewState>('search');
@@ -133,6 +134,34 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-black dark">
+      {/* Navigation */}
+      {currentView !== 'faceswap' && (
+        <div className="fixed top-4 left-4 z-50">
+          <button
+            onClick={() => setCurrentView('faceswap')}
+            className="glass-panel rounded-full px-6 py-3 flex items-center gap-2 hover:glass-strong transition-all"
+          >
+            <Wand2 className="w-5 h-5 text-primary" />
+            <span className="text-white font-medium">Face Swap Studio</span>
+          </button>
+        </div>
+      )}
+
+      {currentView === 'faceswap' && (
+        <>
+          <div className="fixed top-4 left-4 z-50">
+            <button
+              onClick={() => setCurrentView('search')}
+              className="glass-panel rounded-full px-6 py-3 flex items-center gap-2 hover:glass-strong transition-all"
+            >
+              <Skull className="w-5 h-5 text-primary" />
+              <span className="text-white font-medium">Powrót do RIPDB</span>
+            </button>
+          </div>
+          <FaceSwapStudio />
+        </>
+      )}
+
       {currentView === 'search' && (
         <div className="min-h-screen flex flex-col items-center justify-center p-6">
           {/* Enhanced status indicator */}
@@ -259,7 +288,7 @@ export default function App() {
           <div className="mt-16 max-w-4xl w-full fade-in-up" style={{ animationDelay: '0.9s' }}>
             <div className="glass-panel rounded-2xl p-8">
               <h3 className="text-2xl font-bold text-center text-white mb-6">
-                Neural Network Visualization
+                Nowe Funkcje RIPDB
               </h3>
               <div className="grid md:grid-cols-3 gap-6 text-center">
                 <div>
@@ -273,14 +302,11 @@ export default function App() {
                 </div>
                 <div>
                   <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <span className="text-2xl">⚡</span>
+                    <Wand2 className="w-6 h-6 text-primary" />
                   </div>
-                  <h4 className="font-medium text-white mb-2">Instant Performance</h4>
+                  <h4 className="font-medium text-white mb-2">Face Swap Studio</h4>
                   <p className="text-sm text-muted-foreground">
-                    {isRealData 
-                      ? 'Lightning-fast search through your complete database'
-                      : 'Static data loads instantly with zero network delays'
-                    }
+                    Zaawansowany AI face swap dla video z fal.ai API
                   </p>
                 </div>
                 <div>
